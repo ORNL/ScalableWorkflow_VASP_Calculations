@@ -33,7 +33,7 @@ def create_vasp_case(case_path, composition_ase_object):
     shutil.copy(source_path + "/INCAR", case_path)
     shutil.copy(source_path + "/POTCAR", case_path)
     shutil.copy(source_path + "/KPOINTS", case_path)
-    write_vasp(case_path + "/POSCAR", direct=True, atoms=composition_ase_object)
+    write_vasp(case_path + "/POSCAR", direct=True, sort=True, atoms=composition_ase_object)
 
 
 def generate_VASP_randomized_binary_configurations(source_path, destination_path, atomic_increment, symmetry_savings,
@@ -105,10 +105,10 @@ def generate_VASP_randomized_binary_configurations(source_path, destination_path
 
 if __name__ == '__main__':
     current_directory = os.getcwd()
-    source_path = current_directory + '/case-prototype'
-    destination_path = current_directory + "/single_phase_dataset"
-    atomic_increment = 1
-    num_atomic_configurations_per_composition = 150
+    source_path = current_directory + '/bcc/template_Ta-V'
+    destination_path = current_directory + '/bcc/Ta-V'
+    atomic_increment = 4
+    num_atomic_configurations_per_composition = 100
     symmetry_savings = False
     generate_VASP_randomized_binary_configurations(source_path, destination_path, atomic_increment, symmetry_savings,
                                                    num_atomic_configurations_per_composition)
