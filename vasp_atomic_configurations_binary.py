@@ -30,7 +30,7 @@ def nCr(n, r):
 
 def create_vasp_case(case_path, composition_ase_object):
     os.makedirs(case_path, exist_ok=False)
-    shutil.copy(source_path + "/INCAR", case_path)
+    shutil.copy(source_path + "/START", case_path)
     shutil.copy(source_path + "/POTCAR", case_path)
     shutil.copy(source_path + "/KPOINTS", case_path)
     write_vasp(case_path + "/POSCAR", direct=True, sort=True, atoms=composition_ase_object)
@@ -42,7 +42,7 @@ def generate_VASP_randomized_binary_configurations(source_path, destination_path
 
     os.makedirs(destination_path, exist_ok=False)
 
-    assert os.path.exists(source_path + "/INCAR")
+    assert os.path.exists(source_path + "/START")
     assert os.path.exists(source_path + "/POTCAR")
     assert os.path.exists(source_path + "/KPOINTS")
     assert os.path.exists(source_path + "/POSCAR")
@@ -105,8 +105,8 @@ def generate_VASP_randomized_binary_configurations(source_path, destination_path
 
 if __name__ == '__main__':
     current_directory = os.getcwd()
-    source_path = current_directory + '/bcc/template_Ta-V'
-    destination_path = current_directory + '/bcc/Ta-V'
+    source_path = current_directory + '/template_Ta-V'
+    destination_path = current_directory + '/hcp/Ta-V'
     atomic_increment = 4
     num_atomic_configurations_per_composition = 100
     symmetry_savings = False

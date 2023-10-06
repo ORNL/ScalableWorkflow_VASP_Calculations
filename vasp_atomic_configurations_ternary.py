@@ -30,7 +30,7 @@ def nCr(n, r):
 
 def create_vasp_case(case_path, composition_ase_object):
     os.makedirs(case_path, exist_ok=False)
-    shutil.copy(source_path + "/INCAR", case_path)
+    shutil.copy(source_path + "/START", case_path)
     shutil.copy(source_path + "/POTCAR", case_path)
     shutil.copy(source_path + "/KPOINTS", case_path)
     write_vasp(case_path + "/POSCAR", direct=True, sort=True, atoms=composition_ase_object)
@@ -42,7 +42,7 @@ def generate_VASP_randomized_ternary_configurations(source_path, destination_pat
 
     os.makedirs(destination_path, exist_ok=False)
 
-    assert os.path.exists(source_path + "/INCAR")
+    assert os.path.exists(source_path + "/START")
     assert os.path.exists(source_path + "/POTCAR")
     assert os.path.exists(source_path + "/KPOINTS")
     assert os.path.exists(source_path + "/POSCAR")
@@ -88,9 +88,9 @@ def generate_VASP_randomized_ternary_configurations(source_path, destination_pat
 
 if __name__ == '__main__':
     current_directory = os.getcwd()
-    source_path = current_directory + '/bcc/template_Nb-Ta-V'
-    destination_path = current_directory + '/bcc/Nb-Ta-V'
-    atomic_increment = 4
+    source_path = current_directory + '/template_Nb-Ta-V'
+    destination_path = current_directory + '/hcp/Nb-Ta-V'
+    atomic_increment = 8
     num_atomic_configurations_per_composition = 100
     symmetry_savings = False
     generate_VASP_randomized_ternary_configurations(source_path, destination_path, atomic_increment, symmetry_savings,
