@@ -129,10 +129,10 @@ def plot_data(source_path, elements_list):
             plt.title(''.join(elements_list))
             ax.set_xticks([0.0, 0.5, 1.0])
             fig.colorbar(p, ax=ax)
-            plt.show()
+            #plt.show()
             plt.draw()
             plt.tight_layout()
-            plt.savefig("./BCC_enthalpy_vs_concentration_" +pure_elements_dictionary[elements_list[0]]+pure_elements_dictionary[elements_list[1]] + ".png", dpi=400)
+            plt.savefig("./BCC_enthalpy_vs_concentration_" +elements_list[0]+elements_list[1] + ".png", dpi=400)
 
 
 def load_raw_data(raw_data_path):

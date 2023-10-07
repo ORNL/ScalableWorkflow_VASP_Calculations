@@ -27,7 +27,7 @@ def transform_ASE_object_to_data_object(filepath):
     #  Morevoer, this approach assumes tha there is only one global feature to look at,
     #  and that this global feature is specicially retrieveable in a file with the string *bulk* inside.
 
-    ase_object = read_vasp_out(filepath, parallel=False)
+    ase_object = read_vasp_out(filepath)
 
     data_object = Data()
 
