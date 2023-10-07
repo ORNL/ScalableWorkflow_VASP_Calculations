@@ -219,7 +219,7 @@ def transform_VASP_input_to_data_object_base(filepath):
 
     if "OUTCAR" in filepath:
 
-        ase_object = read_vasp_out(filepath, parallel=False)
+        ase_object = read_vasp_out(filepath)
 
         dirpath = filepath.split("OUTCAR")[0]
         data_object = transform_VASP_ASE_object_to_data_object(dirpath, ase_object)
