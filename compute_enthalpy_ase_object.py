@@ -11,7 +11,7 @@ import numpy as np
 
 from ase.io.vasp import read_vasp_out
 
-from utils import nsplit
+from utils import nsplit, replace_total_energy_with_formation_energy
 
 from mpi4py import MPI
 
@@ -35,7 +35,7 @@ def transform_ASE_object_to_data_object(filepath):
     data_object.pos = tensor(ase_object.arrays["positions"]).float()
     proton_numbers = np.expand_dims(ase_object.arrays["numbers"], axis=1)
     forces = ase_object.calc.results["forces"]
-    stress = ase_object.calc.results["stress"]
+    #stress = ase_object.calc.results["stress"]
     fermi_energy = ase_object.calc.eFermi
     free_energy = ase_object.calc.results["free_energy"]
     energy = ase_object.calc.results["energy"]
@@ -57,18 +57,6 @@ def transform_ASE_object_to_data_object(filepath):
 
     return data_object
 
-
-def replace_total_energy_with_formation_energy(data_object, total_energies_pure_elements):
-
-    count_occurrencies_atom_elements = torch.bincount(data_object.x[:,0].int(), minlength=max(list(total_energies_pure_elements.keys()))+1)
-    assert torch.sum(count_occurrencies_atom_elements) == data_object.num_nodes , "number of atoms in data structure does not correspond to sum of total occurrencies of individual atom species"
-
-    count_occurrencies_atom_elements = count_occurrencies_atom_elements / data_object.num_nodes
-
-    for element in total_energies_pure_elements.keys():
-        data_object.y = data_object.y - total_energies_pure_elements[element] * count_occurrencies_atom_elements[element].item()
-
-    return data_object
 
 
 def compute_formation_enthalpy(source_path, destination_path):
@@ -144,23 +132,32 @@ def compute_formation_enthalpy(source_path, destination_path):
 
     for dir in sorted(dirs)[rx.start:rx.stop]:
         print("f Rank: ", rank, " - dir: ", dir, flush=True)
-        os.makedirs(destination_path + '/' + dir, exist_ok=False)
+        #os.makedirs(destination_path + '/' + dir, exist_ok=False)
         for _, subdirs, _ in os.walk(source_path + '/' + dir):
             for subdir in subdirs:
-                os.makedirs(destination_path + '/' + dir + '/'+subdir, exist_ok=False)
+                #os.makedirs(destination_path + '/' + dir + '/'+subdir, exist_ok=False)
                 for _, subsubdirs, _ in os.walk(source_path + '/' + dir + '/' + subdir):
                     for subsubdir in subsubdirs:
-                        os.makedirs(destination_path + '/' + dir + '/' + subdir + '/' + subsubdir, exist_ok=False)
+                        #os.makedirs(destination_path + '/' + dir + '/' + subdir + '/' + subsubdir, exist_ok=False)
                         for _, _, files in os.walk(source_path + '/' + dir + '/' + subdir + '/' + subsubdir):
                             found_outcar = False
                             for file in files:
-                                if file == "OUTCAR":
+                                if file == "OUTCAR" or file == "OUTCAR-bis":
                                     found_outcar = True
                                     try:
                                         data_object = transform_ASE_object_to_data_object(source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + file)
                                         data_object = replace_total_energy_with_formation_energy(data_object, total_energies_pure_elements)
-                                        shutil.copy(source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + file, destination_path+ '/' + dir + '/' + subdir + '/' + subsubdir)
-                                        formation_energy_file = open(destination_path+ '/' + dir + '/' + subdir + '/' + subsubdir + '/' + "formation_energy.txt", "w")
+                                        #shutil.copy(source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + file, destination_path+ '/' + dir + '/' + subdir + '/' + subsubdir)
+                                        if "-bis" in file:
+                                            #formation_energy_file = open(destination_path+ '/' + dir + '/' + subdir + '/' + subsubdir + '/' + "formation_energy-bis.txt", "w")
+                                            formation_energy_file = open(
+                                                source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + "formation_energy-bis.txt",
+                                                "w")
+                                        else:
+                                            #formation_energy_file = open(destination_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + "formation_energy.txt","w")
+                                            formation_energy_file = open(
+                                                source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + "formation_energy.txt",
+                                                "w")
                                         formation_energy_file.write(str(data_object.y.item()))
                                         formation_energy_file.write("\n")
                                         formation_energy_file.close()
@@ -168,13 +165,13 @@ def compute_formation_enthalpy(source_path, destination_path):
                                         print(source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + file, "could not be converted in torch_geometric.data "
                                                                             "object")
                             # If the atomic configuration has not been completed and the OUTCAR is not available, simply remove the corresponding directory from the data replica
-                            if not found_outcar:
-                                shutil.rmtree(destination_path+ '/' + dir + '/' + subdir + '/' + subsubdir)
+                            #if not found_outcar:
+                            #    shutil.rmtree(destination_path+ '/' + dir + '/' + subdir + '/' + subsubdir)
 
             break
 
 
 if __name__ == '__main__':
-    source_path = './bcc'
+    source_path = '../10.13139_OLCF_2217644/bcc'
     destination_path = './bcc_enthalpy'
     compute_formation_enthalpy(source_path, destination_path)
