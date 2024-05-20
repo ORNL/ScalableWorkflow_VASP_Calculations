@@ -1,0 +1,6 @@
+16x16x16      Comment
+ 0            0 = automatic generation of k-points
+Monkhorst     M use Monkhorst Pack
+ 2 2 2        grid 16x16x16
+ 0 0 0        shift (usually 0 0 0)
+
