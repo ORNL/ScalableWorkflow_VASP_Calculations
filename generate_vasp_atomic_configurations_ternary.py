@@ -19,6 +19,8 @@ plt.rcParams.update({"font.size": 20})
 
 from math import factorial
 
+# Fixing the seed
+np.random.seed(42)
 
 def nPr(n, r):
     return int(factorial(n) / factorial(n - r))
