@@ -3,13 +3,10 @@ from os import listdir
 from os.path import isfile, join
 import subprocess
 
-import torch
 from torch import tensor
 from torch_geometric.data import Data
 import shutil
 import numpy as np
-
-import torch
 
 
 import torch
@@ -90,7 +87,7 @@ def transform_ASE_object_to_data_object(filepath):
 
 
 
-def compute_formation_enthalpy(source_path, destination_path):
+def compute_mean_squared_displacement(source_path, destination_path):
     total_energies_pure_elements = {23: 0.0, 41: 0.0, 73: 0.0}
 
     pure_Nb_total_energy = 0.0
@@ -118,20 +115,20 @@ def compute_formation_enthalpy(source_path, destination_path):
         shutil.copy(source_path + '/Ta/Ta128/case-1/OUTCAR', destination_path + '/Ta/Ta128/case-1/OUTCAR')
         shutil.copy(source_path + '/V/V128/case-1/OUTCAR', destination_path + '/V/V128/case-1/OUTCAR')
 
-        Nb_formation_energy = open(destination_path + '/Nb/Nb128/case-1/'+ "formation_energy.txt", "w")
-        Nb_formation_energy.write(str(0.0))
-        Nb_formation_energy.write("\n")
-        Nb_formation_energy.close()
+        Nb_rmsd = open(destination_path + '/Nb/Nb128/case-1/'+ "mean_squared_displacement.txt", "w")
+        Nb_rmsd.write(str(0.0))
+        Nb_rmsd.write("\n")
+        Nb_rmsd.close()
 
-        Ta_formation_energy = open(destination_path + '/Ta/Ta128/case-1/'+ "formation_energy.txt", "w")
-        Ta_formation_energy.write(str(0.0))
-        Ta_formation_energy.write("\n")
-        Ta_formation_energy.close()
+        Ta_rmsd = open(destination_path + '/Ta/Ta128/case-1/'+ "mean_squared_displacement.txt", "w")
+        Ta_rmsd.write(str(0.0))
+        Ta_rmsd.write("\n")
+        Ta_rmsd.close()
 
-        V_formation_energy = open(destination_path + '/V/V128/case-1/'+ "formation_energy.txt", "w")
-        V_formation_energy.write(str(0.0))
-        V_formation_energy.write("\n")
-        V_formation_energy.close()
+        V_rmsd = open(destination_path + '/V/V128/case-1/'+ "mean_squared_displacement.txt", "w")
+        V_rmsd.write(str(0.0))
+        V_rmsd.write("\n")
+        V_rmsd.close()
 
         pure_Nb_total_energy = pure_Nb_object.y.item()
         pure_Ta_total_energy = pure_Ta_object.y.item()
@@ -183,8 +180,8 @@ def compute_formation_enthalpy(source_path, destination_path):
                                             final_bcc = extract_coordinates(
                                                 source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + 'CONTCAR-bis')
                                             #formation_energy_file = open(destination_path+ '/' + dir + '/' + subdir + '/' + subsubdir + '/' + "formation_energy-bis.txt", "w")
-                                            mean_squared_displacement_file = open(
-                                                source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + "mean_squared_displacement-bis.txt",
+                                            root_mean_squared_displacement_file = open(
+                                                source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + "root_mean_squared_displacement-bis.txt",
                                                 "w")
                                         else:
                                             #formation_energy_file = open(destination_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + "formation_energy.txt","w")
@@ -192,8 +189,8 @@ def compute_formation_enthalpy(source_path, destination_path):
                                                 source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + '0.POSCAR')
                                             final_bcc = extract_coordinates(
                                                 source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + 'CONTCAR')
-                                            mean_squared_displacement_file = open(
-                                                source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + "mean_squared_displacement.txt",
+                                            root_mean_squared_displacement_file = open(
+                                                source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + "root_mean_squared_displacement.txt",
                                                 "w")
                                         #distorted_ideal_bcc_lattice = torch.matmul(data_object.supercell_size, initial_ideal_bcc.t())
                                         #atomic_displacements = torch.norm(distorted_ideal_bcc_lattice.t()-data_object.pos, dim=1)
@@ -202,11 +199,12 @@ def compute_formation_enthalpy(source_path, destination_path):
                                         atomic_displacements[atomic_displacements < -0.9] += 1
                                         distorted_atomic_displacement = torch.matmul(data_object.supercell_size,
                                                                                    atomic_displacements.t())
-                                        norm_distorted_atomic_displacement = torch.norm(distorted_atomic_displacement.t(), dim=1)
-                                        mean_squared_displacement = torch.sum(norm_distorted_atomic_displacement)/128
-                                        mean_squared_displacement_file.write(str(mean_squared_displacement.item()))
-                                        mean_squared_displacement_file.write("\n")
-                                        mean_squared_displacement_file.close()
+                                        norm_distorted_atomic_displacement = torch.norm(distorted_atomic_displacement.t(), dim=1)**2
+                                        mean_squared_displacement = torch.sum(norm_distorted_atomic_displacement)/norm_distorted_atomic_displacement.shape[0]
+                                        root_mean_squared_displacement = torch.sqrt(mean_squared_displacement)
+                                        root_mean_squared_displacement_file.write(str(root_mean_squared_displacement.item()))
+                                        root_mean_squared_displacement_file.write("\n")
+                                        root_mean_squared_displacement_file.close()
                                     except:
                                         print(source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + file, "could not be converted in torch_geometric.data "
                                                                             "object")
@@ -218,7 +216,7 @@ def compute_formation_enthalpy(source_path, destination_path):
 
 
 if __name__ == '__main__':
-    source_path = '../10.13139_OLCF_2217644/bcc'
+    source_path = '../10.13139_OLCF_2222910/bcc'
     destination_path = './bcc_enthalpy'
-    compute_formation_enthalpy(source_path, destination_path)
+    compute_mean_squared_displacement(source_path, destination_path)
 
