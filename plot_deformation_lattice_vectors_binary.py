@@ -74,13 +74,13 @@ def plot_data(source_path, elements_list):
     loop = False
     max_neighbours = 10000
 
+    """
     # Compute edges
     compute_edges = RadiusGraph(
         r=radius,
         loop=loop,
         max_num_neighbors=max_neighbours,
     )
-    """
     dataset_loc [:] = [compute_edges(data) for data in dataset_loc ]
 
     compute_edge_lengths = Distance(norm=False, cat=True)
@@ -97,12 +97,12 @@ def plot_data(source_path, elements_list):
     max_edge_length = comm.allreduce(max_edge_length, op=max)
     """
 
-    xdata_loc = [sum(data.x[:, 0] == pure_elements_dictionary[element_selected_for_plots]).item() / data.num_nodes for data in dataset_loc]
-    formation_enthalpy_loc = [data.y[0].item() for data in dataset_loc]
+    xdata_loc = [sum(data.x[:, 0] == min_atom_number).item() / data.num_nodes for data in dataset_loc]
+    msd_loc = [torch.norm(data.y).item() for data in dataset_loc]
 
-    assert len(xdata_loc) == len(formation_enthalpy_loc)
+    assert len(xdata_loc) == len(msd_loc)
 
-    tuples_loc = [(composition, enthalpy) for composition, enthalpy in zip(xdata_loc,formation_enthalpy_loc)]
+    tuples_loc = [(composition, msd) for composition, msd in zip(xdata_loc,msd_loc)]
 
     tuples_all = comm.gather(tuples_loc, root=0)
 
@@ -114,42 +114,43 @@ def plot_data(source_path, elements_list):
         tuples = flatten(tuples_all)
 
         xdata = [elem[0] for elem in tuples]
-        formation_enthalpy = [elem[1] for elem in tuples]
+        msd = [elem[1] for elem in tuples]
 
-        # Rescale formation enthalpy to use meV/atom
-        formation_enthalpy_rescaled = [item * 1000/128 for item in formation_enthalpy]
-
-        q25_formation_enthalpy, q75_formation_enthalpy = np.percentile(formation_enthalpy_rescaled, [25, 75])
-        bin_width_formation_enthalpy = 2 * (q75_formation_enthalpy - q25_formation_enthalpy) * len(formation_enthalpy_rescaled) ** (
-                    -1 / 3)
-        bins_formation_enthalpy = round((max(formation_enthalpy_rescaled) - min(formation_enthalpy_rescaled)) / bin_width_formation_enthalpy)
-        print("Min and Maximum of Formation Energy: ", min(formation_enthalpy_rescaled[2:-1]), " - ", max(formation_enthalpy_rescaled[2:-1]))
+        q25_msd, q75_msd = np.percentile(msd, [25, 75])
+        bin_width_msd = 2 * (q75_msd - q25_msd) * len(msd) ** (-1 / 3)
+        bins_formation_enthalpy = round((max(msd) - min(msd)) / bin_width_msd)
+        print("Min and Maximum of Formation Energy: ", min(msd[2:-1]), " - ", max(msd[2:-1]))
         # print("Freedman–Diaconis number of bins:", bins_formation_enthalpy)
         plt.figure()
-        plt.hist(formation_enthalpy_rescaled, color="blue", density=False, bins=100)  # density=False would make counts
+        plt.hist(msd, color="blue", density=False, bins=100)  # density=False would make counts
         plt.ylabel('Number of configurations')
-        plt.xlabel('Formation Energy (meV/atom)')
+        plt.xlabel('RMSD (angstrom)')
         plt.title(elements_list[0]+elements_list[1]+' - BCC phase')
         plt.draw()
         plt.tight_layout()
-        plt.savefig('BCC_Enthalpy_Histogram_'+elements_list[0]+elements_list[1])
+        plt.savefig('BCC_MSD_Histogram_'+elements_list[0]+elements_list[1])
 
         # plot formation enthalpu as a function of chemical composition
         fig, ax = plt.subplots()
-        hist2d_norm = getcolordensity(xdata, formation_enthalpy_rescaled)
+        hist2d_norm = getcolordensity(xdata, msd)
 
         plt.scatter(
-            xdata, formation_enthalpy_rescaled, s=8, c=hist2d_norm, vmin=0, vmax=1
+            xdata, msd, s=8, c=hist2d_norm, vmin=0, vmax=1
         )
         plt.clim(0, 1)
         plt.colorbar()
         plt.xlabel(element_selected_for_plots+" concentration")
-        plt.ylabel('Formation Energy (meV/atom)')
+        plt.ylabel('Lattice deformation (angstrom)')
         plt.title(elements_list[0]+elements_list[1])
         ax.set_xticks([0.0, 0.5, 1.0])
+
+        # Set axis limits (if needed)
+        ax.set_xlim([min(xdata), max(xdata)])  # Set x-axis limits as needed
+        ax.set_ylim([0, 0.03])  # Set y-axis limits as needed
+
         plt.draw()
         plt.tight_layout()
-        plt.savefig("./BCC_enthalpy_vs_concentration_" + elements_list[0]+elements_list[1] + ".png", dpi=400)
+        plt.savefig("./BCC_Deformation_Lattice_Vectors_vs_concentration_" + elements_list[0]+elements_list[1] + ".png", dpi=400)
 
 
 def load_raw_data(raw_data_path):
@@ -249,7 +250,7 @@ def transform_VASP_ASE_object_to_data_object(filepath, ase_object):
     data_object.pos = tensor(ase_object.arrays["positions"]).float()
     proton_numbers = np.expand_dims(ase_object.arrays["numbers"], axis=1)
     forces = ase_object.calc.results["forces"]
-    stress = ase_object.calc.results["stress"]
+    #stress = ase_object.calc.results["stress"]
     fermi_energy = ase_object.calc.eFermi
     free_energy = ase_object.calc.results["free_energy"]
     energy = ase_object.calc.results["energy"]
@@ -258,20 +259,22 @@ def transform_VASP_ASE_object_to_data_object(filepath, ase_object):
     )
     data_object.x = tensor(node_feature_matrix).float()
 
-    formation_energy_file = open(filepath + 'formation_energy.txt', 'r')
-    Lines = formation_energy_file.readlines()
+    deformation_lattice_vectors_file = open(filepath + 'deformation_lattice_vectors.txt', 'r')
+    Lines = deformation_lattice_vectors_file.readlines()
 
     # Strips the newline character
-    for line in Lines:
-        data_object.y = tensor([float(line.strip())])
-        if data_object.y * 1000/128 > 70.0:
-            print(filepath)
+    deformation_vectors_list = [list(map(float, line.split())) for line in Lines]
+
+    # Convert list to a PyTorch tensor
+    deformation_vectors_tensor = torch.tensor(deformation_vectors_list)
+
+    data_object.y = deformation_vectors_tensor
 
     return data_object
 
 
 if __name__ == '__main__':
     elements_list = ['Ta', 'V']
-    # source_path = './bcc_enthalpy/'+'-'.join(elements_list)
+    #source_path = './bcc_enthalpy/'+elements_list[0]+'-'+elements_list[1]
     source_path = './10.13139_OLCF_2222910/bcc_' + '-'.join(elements_list)
     plot_data(source_path, elements_list)

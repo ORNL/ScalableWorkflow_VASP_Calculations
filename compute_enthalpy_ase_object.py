@@ -69,6 +69,7 @@ def compute_formation_enthalpy(source_path, destination_path):
     if rank == 0:
 
         # create a new directory for filtered data
+        """
         os.makedirs(destination_path, exist_ok=False)
         os.makedirs(destination_path + '/Nb', exist_ok=False)
         os.makedirs(destination_path + '/Nb/Nb128', exist_ok=False)
@@ -79,25 +80,31 @@ def compute_formation_enthalpy(source_path, destination_path):
         os.makedirs(destination_path + '/V', exist_ok=False)
         os.makedirs(destination_path + '/V/V128', exist_ok=False)
         os.makedirs(destination_path + '/V/V128/case-1', exist_ok=False)
+        """
 
         pure_Nb_object = transform_ASE_object_to_data_object(source_path + '/Nb/Nb128/case-1/OUTCAR')
         pure_Ta_object = transform_ASE_object_to_data_object(source_path + '/Ta/Ta128/case-1/OUTCAR')
         pure_V_object = transform_ASE_object_to_data_object(source_path + '/V/V128/case-1/OUTCAR')
+        """
         shutil.copy(source_path + '/Nb/Nb128/case-1/OUTCAR', destination_path + '/Nb/Nb128/case-1/OUTCAR')
         shutil.copy(source_path + '/Ta/Ta128/case-1/OUTCAR', destination_path + '/Ta/Ta128/case-1/OUTCAR')
         shutil.copy(source_path + '/V/V128/case-1/OUTCAR', destination_path + '/V/V128/case-1/OUTCAR')
+        """
 
-        Nb_formation_energy = open(destination_path + '/Nb/Nb128/case-1/'+ "formation_energy.txt", "w")
+        #Nb_formation_energy = open(destination_path + '/Nb/Nb128/case-1/'+ "formation_energy.txt", "w")
+        Nb_formation_energy = open(source_path + '/Nb/Nb128/case-1/' + "formation_energy.txt", "w")
         Nb_formation_energy.write(str(0.0))
         Nb_formation_energy.write("\n")
         Nb_formation_energy.close()
 
-        Ta_formation_energy = open(destination_path + '/Ta/Ta128/case-1/'+ "formation_energy.txt", "w")
+        #Ta_formation_energy = open(destination_path + '/Ta/Ta128/case-1/'+ "formation_energy.txt", "w")
+        Ta_formation_energy = open(source_path + '/Ta/Ta128/case-1/' + "formation_energy.txt", "w")
         Ta_formation_energy.write(str(0.0))
         Ta_formation_energy.write("\n")
         Ta_formation_energy.close()
 
-        V_formation_energy = open(destination_path + '/V/V128/case-1/'+ "formation_energy.txt", "w")
+        #V_formation_energy = open(destination_path + '/V/V128/case-1/'+ "formation_energy.txt", "w")
+        V_formation_energy = open(source_path + '/V/V128/case-1/' + "formation_energy.txt", "w")
         V_formation_energy.write(str(0.0))
         V_formation_energy.write("\n")
         V_formation_energy.close()
@@ -172,6 +179,6 @@ def compute_formation_enthalpy(source_path, destination_path):
 
 
 if __name__ == '__main__':
-    source_path = '../10.13139_OLCF_2217644/bcc'
+    source_path = '10.13139_OLCF_2222910/bcc_Ta-V'
     destination_path = './bcc_enthalpy'
     compute_formation_enthalpy(source_path, destination_path)

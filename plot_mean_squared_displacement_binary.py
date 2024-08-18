@@ -119,7 +119,7 @@ def plot_data(source_path, elements_list):
         q25_msd, q75_msd = np.percentile(msd, [25, 75])
         bin_width_msd = 2 * (q75_msd - q25_msd) * len(msd) ** (-1 / 3)
         bins_formation_enthalpy = round((max(msd) - min(msd)) / bin_width_msd)
-        print("Min and Maximum of Formation Energy: ", min(msd[2:-1]), " - ", max(msd[2:-1]))
+        print("Minimum and Maximum of Root Mean Squared Displacement: ", min(msd[2:-1]), " - ", max(msd[2:-1]))
         # print("Freedman–Diaconis number of bins:", bins_formation_enthalpy)
         plt.figure()
         plt.hist(msd, color="blue", density=False, bins=100)  # density=False would make counts
@@ -177,13 +177,16 @@ def load_raw_data(raw_data_path):
                     continue
                 subdir_name = os.path.join(dir_name, subname)
                 for subsubname in os.listdir(subdir_name):
-                    subsubdir_name = os.path.join(dir_name, subname)
-                    if os.path.isfile(os.path.join(subdir_name, subsubname)):
-                        data_object = transform_input_to_data_object_base(
-                            filepath=os.path.join(subdir_name, subsubname)
-                        )
-                        if not isinstance(data_object, type(None)):
-                            dataset.append(data_object)
+                    if subsubname == ".DS_Store":
+                        continue
+                    subsubdir_name = os.path.join(subdir_name, subsubname)
+                    for subsubsubname in os.listdir(subsubdir_name):
+                        if os.path.isfile(os.path.join(subsubdir_name, subsubsubname)):
+                            data_object = transform_input_to_data_object_base(
+                                filepath=os.path.join(subsubdir_name, subsubsubname)
+                            )
+                            if not isinstance(data_object, type(None)):
+                                dataset.append(data_object)
 
     return dataset
 
@@ -251,7 +254,7 @@ def transform_VASP_ASE_object_to_data_object(filepath, ase_object):
     )
     data_object.x = tensor(node_feature_matrix).float()
 
-    mean_squared_displacement_file = open(filepath + 'mean_squared_displacement.txt', 'r')
+    mean_squared_displacement_file = open(filepath + 'root_mean_squared_displacement.txt', 'r')
     Lines = mean_squared_displacement_file.readlines()
 
     # Strips the newline character
@@ -262,7 +265,7 @@ def transform_VASP_ASE_object_to_data_object(filepath, ase_object):
 
 
 if __name__ == '__main__':
-    elements_list = ['Nb', 'Ta']
+    elements_list = ['Ta', 'V']
     #source_path = './bcc_enthalpy/'+elements_list[0]+'-'+elements_list[1]
-    source_path = '../10.13139_OLCF_2217644/bcc/' + '-'.join(elements_list)
+    source_path = './10.13139_OLCF_2222910/bcc_' + '-'.join(elements_list)
     plot_data(source_path, elements_list)

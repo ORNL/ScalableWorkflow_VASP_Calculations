@@ -36,6 +36,46 @@ def extract_coordinates(file_path):
 
     return tensor_coordinates
 
+
+def extract_direct_lattice_vectors_from_contcar(contcar_path):
+    # Read the CONTCAR file
+    with open(contcar_path, 'r') as file:
+        lines = file.readlines()
+
+    # The lattice vectors are usually located on lines 3, 4, and 5
+    lattice_vectors = []
+
+    for i in range(2, 5):
+        line = lines[i].strip()
+        vector = [float(val) for val in line.split()]
+        lattice_vectors.append(vector)
+
+    return torch.tensor(lattice_vectors)
+
+def extract_last_direct_lattice_vectors_from_outcar(outcar_path):
+    # Read the OUTCAR file
+    with open(outcar_path, 'r') as file:
+        lines = file.readlines()
+
+    # Initialize variables to hold the direct lattice vectors
+    lattice_vectors = []
+
+    # Loop through the file lines in reverse to find the last occurrence of "direct lattice vectors"
+    for line in reversed(lines):
+        if "direct lattice vectors" in line:
+            # The vectors are the next three lines after "direct lattice vectors"
+            idx = lines.index(line) + 1
+            lattice_vectors = [lines[idx].strip(),
+                               lines[idx + 1].strip(),
+                               lines[idx + 2].strip()]
+            break
+
+    # If found, convert strings to lists of floats
+    if lattice_vectors:
+        lattice_vectors = [[float(val) for val in vector.split()] for vector in lattice_vectors]
+
+    return torch.tensor(lattice_vectors)
+
 from ase.io.vasp import read_vasp_out
 
 from utils import nsplit, replace_total_energy_with_formation_energy
@@ -114,33 +154,28 @@ def compute_mean_squared_displacement(source_path, destination_path):
         shutil.copy(source_path + '/V/V128/case-1/OUTCAR', destination_path + '/V/V128/case-1/OUTCAR')
         """
 
-        #Nb_rmsd = open(destination_path + '/Nb/Nb128/case-1/'+ "root_mean_squared_displacement.txt", "w")
-        Nb_rmsd = open(source_path + '/Nb/Nb128/case-1/' + "root_mean_squared_displacement.txt", "w")
-        Nb_rmsd.write(str(0.0))
-        Nb_rmsd.write("\n")
-        Nb_rmsd.close()
+        tensor_zeros = torch.zeros(3, 3)
+        tensor_zeros_str = '\n'.join([' '.join(map(str, row.tolist())) for row in tensor_zeros])
 
-        #Ta_rmsd = open(destination_path + '/Ta/Ta128/case-1/'+ "root_mean_squared_displacement.txt", "w")
-        Ta_rmsd = open(source_path + '/Ta/Ta128/case-1/' + "root_mean_squared_displacement.txt", "w")
-        Ta_rmsd.write(str(0.0))
-        Ta_rmsd.write("\n")
-        Ta_rmsd.close()
+        #Nb_lattice_vectors = open(destination_path + '/Nb/Nb128/case-1/'+ "mean_squared_displacement.txt", "w")
+        Nb_lattice_vectors = open(source_path + '/Nb/Nb128/case-1/' + "deformation_lattice_vectors.txt", "w")
+        Nb_lattice_vectors.write(tensor_zeros_str)
+        Nb_lattice_vectors.write("\n")
+        Nb_lattice_vectors.close()
 
-        #V_rmsd = open(destination_path + '/V/V128/case-1/'+ "root_mean_squared_displacement.txt", "w")
-        V_rmsd = open(source_path + '/V/V128/case-1/'+ "root_mean_squared_displacement.txt", "w")
-        V_rmsd.write(str(0.0))
-        V_rmsd.write("\n")
-        V_rmsd.close()
+        #Ta_lattice_vectors = open(destination_path + '/Ta/Ta128/case-1/'+ "mean_squared_displacement.txt", "w")
+        Ta_lattice_vectors = open(source_path + '/Ta/Ta128/case-1/' + "deformation_lattice_vectors.txt", "w")
+        Ta_lattice_vectors.write(tensor_zeros_str)
+        Ta_lattice_vectors.write("\n")
+        Ta_lattice_vectors.close()
+
+        #V_lattice_vectors = open(destination_path + '/V/V128/case-1/'+ "mean_squared_displacement.txt", "w")
+        V_lattice_vectors = open(source_path + '/V/V128/case-1/' + "deformation_lattice_vectors.txt", "w")
+        V_lattice_vectors.write(tensor_zeros_str)
+        V_lattice_vectors.write("\n")
+        V_lattice_vectors.close()
 
     comm.Barrier()
-
-    pure_Nb_total_energy = comm.bcast(pure_Nb_total_energy, root=0)
-    pure_Ta_total_energy = comm.bcast(pure_Ta_total_energy, root=0)
-    pure_V_total_energy = comm.bcast(pure_V_total_energy, root=0)
-
-    total_energies_pure_elements[41] = pure_Nb_total_energy
-    total_energies_pure_elements[73] = pure_Ta_total_energy
-    total_energies_pure_elements[23] = pure_V_total_energy
 
     dirs = None
 
@@ -174,35 +209,25 @@ def compute_mean_squared_displacement(source_path, destination_path):
                                         data_object = transform_ASE_object_to_data_object(source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + file)
                                         #shutil.copy(source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + file, destination_path+ '/' + dir + '/' + subdir + '/' + subsubdir)
                                         if "-bis" in file:
-                                            initial_ideal_bcc = extract_coordinates(source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + '0.POSCAR-bis')
-                                            final_bcc = extract_coordinates(
-                                                source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + 'CONTCAR-bis')
-                                            #formation_energy_file = open(destination_path+ '/' + dir + '/' + subdir + '/' + subsubdir + '/' + "formation_energy-bis.txt", "w")
-                                            root_mean_squared_displacement_file = open(
-                                                source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + "root_mean_squared_displacement-bis.txt",
+                                            initial_lattice_vectors = extract_direct_lattice_vectors_from_contcar(
+                                                source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + 'POSCAR-bis')
+                                            final_lattice_vectors = extract_direct_lattice_vectors_from_contcar(source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + 'CONTCAR-bis')
+                                            deformation_lattice_vectors_file = open(
+                                                source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + "deformation_lattice_vectors-bis.txt",
                                                 "w")
                                         else:
-                                            #formation_energy_file = open(destination_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + "formation_energy.txt","w")
-                                            initial_ideal_bcc = extract_coordinates(
-                                                source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + '0.POSCAR')
-                                            final_bcc = extract_coordinates(
-                                                source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + 'CONTCAR')
-                                            root_mean_squared_displacement_file = open(
-                                                source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + "root_mean_squared_displacement.txt",
-                                                "w")
-                                        #distorted_ideal_bcc_lattice = torch.matmul(data_object.supercell_size, initial_ideal_bcc.t())
+                                            initial_lattice_vectors = extract_direct_lattice_vectors_from_contcar(
+                                                source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + 'POSCAR')
+                                            final_lattice_vectors = extract_direct_lattice_vectors_from_contcar(source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + 'CONTCAR')
+                                            deformation_lattice_vectors_file = open(
+                                                source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + "deformation_lattice_vectors.txt",
+                                                "w")                                        #distorted_ideal_bcc_lattice = torch.matmul(data_object.supercell_size, initial_ideal_bcc.t())
                                         #atomic_displacements = torch.norm(distorted_ideal_bcc_lattice.t()-data_object.pos, dim=1)
-                                        atomic_displacements = final_bcc - initial_ideal_bcc
-                                        atomic_displacements[atomic_displacements > 0.9] -= 1
-                                        atomic_displacements[atomic_displacements < -0.9] += 1
-                                        distorted_atomic_displacement = torch.matmul(data_object.supercell_size,
-                                                                                   atomic_displacements.t())
-                                        norm_distorted_atomic_displacement = torch.norm(distorted_atomic_displacement.t(), dim=1)**2
-                                        mean_squared_displacement = torch.sum(norm_distorted_atomic_displacement)/norm_distorted_atomic_displacement.shape[0]
-                                        root_mean_squared_displacement = torch.sqrt(mean_squared_displacement)
-                                        root_mean_squared_displacement_file.write(str(root_mean_squared_displacement.item()))
-                                        root_mean_squared_displacement_file.write("\n")
-                                        root_mean_squared_displacement_file.close()
+                                        deformation_lattice_vectors = final_lattice_vectors - initial_lattice_vectors
+                                        tensor_str = '\n'.join([' '.join(map(str, row.tolist())) for row in deformation_lattice_vectors])
+                                        deformation_lattice_vectors_file.write(tensor_str)
+                                        deformation_lattice_vectors_file.write("\n")
+                                        deformation_lattice_vectors_file.close()
                                     except:
                                         print(source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + file, "could not be converted in torch_geometric.data "
                                                                             "object")
