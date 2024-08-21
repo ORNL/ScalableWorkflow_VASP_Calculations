@@ -117,7 +117,7 @@ def plot_data(source_path, elements_list):
         formation_enthalpy = [elem[1] for elem in tuples]
 
         # Rescale formation enthalpy to use meV/atom
-        formation_enthalpy_rescaled = [item * 1000/128 for item in formation_enthalpy]
+        formation_enthalpy_rescaled = [item for item in formation_enthalpy]
 
         q25_formation_enthalpy, q75_formation_enthalpy = np.percentile(formation_enthalpy_rescaled, [25, 75])
         bin_width_formation_enthalpy = 2 * (q75_formation_enthalpy - q25_formation_enthalpy) * len(formation_enthalpy_rescaled) ** (
@@ -264,7 +264,7 @@ def transform_VASP_ASE_object_to_data_object(filepath, ase_object):
     # Strips the newline character
     for line in Lines:
         data_object.y = tensor([float(line.strip())])
-        if data_object.y * 1000/128 > 70.0:
+        if data_object.y > 70.0:
             print(filepath)
 
     return data_object

@@ -20,12 +20,6 @@ size = comm.Get_size()
 rank = comm.Get_rank()
 
 def transform_ASE_object_to_data_object(filepath):
-    # FIXME:
-    #  this still assumes bulk modulus is specific to the CFG format.
-    #  To deal with multiple files across formats, one should generalize this function
-    #  by moving the reading of the .bulk file in a standalone routine.
-    #  Morevoer, this approach assumes tha there is only one global feature to look at,
-    #  and that this global feature is specicially retrieveable in a file with the string *bulk* inside.
 
     ase_object = read_vasp_out(filepath)
 
@@ -44,8 +38,6 @@ def transform_ASE_object_to_data_object(filepath):
     )
     data_object.x = tensor(node_feature_matrix).float()
 
-    #data_object.y = tensor(energy)
-
     search_string = " 'reached required accuracy' "
     cmd = 'grep -n ' + search_string + filepath
     if subprocess.getoutput(cmd) == "":
@@ -53,7 +45,10 @@ def transform_ASE_object_to_data_object(filepath):
 
     cmd = 'grep -n '+'"energy(sigma->0) =" '+ filepath + ' | tail -1 | rev | cut -d '+'" "'+' -f1 | rev'
     energy = float(subprocess.getoutput(cmd))
-    data_object.y = tensor(energy)
+
+    # Convert energy from eV to meV
+    # Normalize energy by the number of atoms in the structure
+    data_object.y = tensor(energy) * 1000/data_object.num_nodes
 
     return data_object
 
