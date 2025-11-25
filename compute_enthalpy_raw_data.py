@@ -148,11 +148,14 @@ def compute_formation_enthalpy(source_path, destination_path):
         for first_dir in first_level_dirs:
             second_level_dirs = [f.name for f in os.scandir(source_path + '/' + first_dir) if f.is_dir()]
             # Store as tuples of (first_level, second_level) to preserve the path
+            # Filter out 'case-*' directories which are third level (not composition directories)
             for second_dir in second_level_dirs:
-                dirs.append((first_dir, second_dir))
+                if not second_dir.startswith('case-'):
+                    dirs.append((first_dir, second_dir))
         
-        # Remove pure element directories
-        dirs = [(f, s) for (f, s) in dirs if s not in ['Nb', 'Nb128', 'Zr', 'Zr128']]
+        # Remove pure element directories (V, V128, Nb, Nb128, Zr, Zr128, Ti, Ti128, Hf, Hf128)
+        pure_element_patterns = ['V', 'V128', 'Nb', 'Nb128', 'Zr', 'Zr128', 'Ti', 'Ti128', 'Hf', 'Hf128', 'Ta', 'Ta128']
+        dirs = [(f, s) for (f, s) in dirs if s not in pure_element_patterns]
 
     dirs = comm.bcast(dirs, root=0)
 
