@@ -53,7 +53,7 @@ def generate_VASP_randomized_ternary_configurations(source_path, destination_pat
 
     # Extract set of atom elements
     elements_list = list(set(list(ase_object.numbers)))
-    assert 3 == len(elements_list), "This function can only be used for binary alloys"
+    assert 3 == len(elements_list), "This function can only be used for ternary alloys"
     num_atoms = ase_object.numbers.shape[0]
 
     chemical_composition = np.zeros_like(ase_object.numbers)
@@ -90,8 +90,8 @@ def generate_VASP_randomized_ternary_configurations(source_path, destination_pat
 
 if __name__ == '__main__':
     current_directory = os.getcwd()
-    source_path = current_directory + '/template_Nb-Ta-V'
-    destination_path = current_directory + '/hcp/Nb-Ta-V'
+    source_path = current_directory + '/template_Nb-Ta-Zr'
+    destination_path = current_directory + '/bcc/Nb-Ta-Zr'
     atomic_increment = 8
     num_atomic_configurations_per_composition = 100
     symmetry_savings = False

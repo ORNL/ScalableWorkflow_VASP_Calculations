@@ -47,6 +47,70 @@ size = comm.Get_size()
 rank = comm.Get_rank()
 
 
+def find_final_outcar(directory):
+    """Find the OUTCAR file with the largest B in NB.OUTCAR format, or plain OUTCAR as fallback."""
+    pattern = re.compile(r'^N(\d+)\.OUTCAR$')
+    max_index = -1
+    max_file = None
+    has_plain_outcar = False
+    
+    try:
+        files = os.listdir(directory)
+        for file in files:
+            # Check for plain OUTCAR
+            if file == 'OUTCAR':
+                has_plain_outcar = True
+            # Check for N*.OUTCAR pattern
+            match = pattern.match(file)
+            if match:
+                index = int(match.group(1))
+                if index > max_index:
+                    max_index = index
+                    max_file = file
+    except FileNotFoundError:
+        return None
+    
+    # Return N*.OUTCAR if found, otherwise return plain OUTCAR if it exists
+    if max_file is not None:
+        return max_file
+    elif has_plain_outcar:
+        return 'OUTCAR'
+    else:
+        return None
+
+
+def find_final_contcar(directory):
+    """Find the CONTCAR file with the largest B in NB.CONTCAR format, or plain CONTCAR as fallback."""
+    pattern = re.compile(r'^N(\d+)\.CONTCAR$')
+    max_index = -1
+    max_file = None
+    has_plain_contcar = False
+    
+    try:
+        files = os.listdir(directory)
+        for file in files:
+            # Check for plain CONTCAR
+            if file == 'CONTCAR':
+                has_plain_contcar = True
+            # Check for N*.CONTCAR pattern
+            match = pattern.match(file)
+            if match:
+                index = int(match.group(1))
+                if index > max_index:
+                    max_index = index
+                    max_file = file
+    except FileNotFoundError:
+        return None
+    
+    # Return N*.CONTCAR if found, otherwise return plain CONTCAR if it exists
+    if max_file is not None:
+        return max_file
+    elif has_plain_contcar:
+        return 'CONTCAR'
+    else:
+        return None
+
+
 def transform_ASE_object_to_data_object(filepath):
     # FIXME:
     #  this still assumes bulk modulus is specific to the CFG format.
@@ -88,133 +152,131 @@ def transform_ASE_object_to_data_object(filepath):
 
 
 def compute_mean_squared_displacement(source_path, destination_path):
-    total_energies_pure_elements = {23: 0.0, 41: 0.0, 73: 0.0}
-
-    pure_Nb_total_energy = 0.0
-    pure_Ta_total_energy = 0.0
-    pure_V_total_energy = 0.0
+    
+    # Element atomic numbers mapping (can be extended)
+    element_atomic_numbers = {
+        'Nb': 41, 'Ta': 73, 'V': 23, 'Zr': 40, 'Hf': 72, 'Ti': 22
+    }
+    
+    pure_elements = []
 
     if rank == 0:
-
-        # create a new directory for filtered data
-        """
-        os.makedirs(destination_path, exist_ok=False)
-        os.makedirs(destination_path + '/Nb', exist_ok=False)
-        os.makedirs(destination_path + '/Nb/Nb128', exist_ok=False)
-        os.makedirs(destination_path + '/Nb/Nb128/case-1', exist_ok=False)
-        os.makedirs(destination_path + '/Ta', exist_ok=False)
-        os.makedirs(destination_path + '/Ta/Ta128', exist_ok=False)
-        os.makedirs(destination_path + '/Ta/Ta128/case-1', exist_ok=False)
-        os.makedirs(destination_path + '/V', exist_ok=False)
-        os.makedirs(destination_path + '/V/V128', exist_ok=False)
-        os.makedirs(destination_path + '/V/V128/case-1', exist_ok=False)
-
-        shutil.copy(source_path + '/Nb/Nb128/case-1/OUTCAR', destination_path + '/Nb/Nb128/case-1/OUTCAR')
-        shutil.copy(source_path + '/Ta/Ta128/case-1/OUTCAR', destination_path + '/Ta/Ta128/case-1/OUTCAR')
-        shutil.copy(source_path + '/V/V128/case-1/OUTCAR', destination_path + '/V/V128/case-1/OUTCAR')
-        """
-
-        #Nb_rmsd = open(destination_path + '/Nb/Nb128/case-1/'+ "root_mean_squared_displacement.txt", "w")
-        Nb_rmsd = open(source_path + '/Nb/Nb128/case-1/' + "root_mean_squared_displacement.txt", "w")
-        Nb_rmsd.write(str(0.0))
-        Nb_rmsd.write("\n")
-        Nb_rmsd.close()
-
-        #Ta_rmsd = open(destination_path + '/Ta/Ta128/case-1/'+ "root_mean_squared_displacement.txt", "w")
-        Ta_rmsd = open(source_path + '/Ta/Ta128/case-1/' + "root_mean_squared_displacement.txt", "w")
-        Ta_rmsd.write(str(0.0))
-        Ta_rmsd.write("\n")
-        Ta_rmsd.close()
-
-        #V_rmsd = open(destination_path + '/V/V128/case-1/'+ "root_mean_squared_displacement.txt", "w")
-        V_rmsd = open(source_path + '/V/V128/case-1/'+ "root_mean_squared_displacement.txt", "w")
-        V_rmsd.write(str(0.0))
-        V_rmsd.write("\n")
-        V_rmsd.close()
-
+        # Automatically discover pure element directories
+        print(f"Discovering pure element directories in {source_path}", flush=True)
+        first_level_dirs = [f.name for f in os.scandir(source_path) if f.is_dir()]
+        
+        for first_dir in first_level_dirs:
+            second_level_dirs = [f.name for f in os.scandir(source_path + '/' + first_dir) if f.is_dir()]
+            # Look for directories matching pattern like Nb128, Zr128, etc. (element + 128)
+            for dir_name in second_level_dirs:
+                # Check if directory name ends with 128 and starts with a known element
+                if dir_name.endswith('128'):
+                    element = dir_name[:-3]  # Remove '128'
+                    if element in element_atomic_numbers:
+                        pure_elements.append({
+                            'element': element,
+                            'dir_name': dir_name,
+                            'first_level': first_dir,
+                            'atomic_number': element_atomic_numbers[element]
+                        })
+        
+        print(f"Found pure elements: {[e['element'] for e in pure_elements]}", flush=True)
+        
+        # Process each pure element
+        for elem_info in pure_elements:
+            element = elem_info['element']
+            dir_name = elem_info['dir_name']
+            first_level = elem_info['first_level']
+            
+            rmsd_file = open(source_path + f'/{first_level}/{dir_name}/case-1/root_mean_squared_displacement.txt', "w")
+            rmsd_file.write(str(0.0))
+            rmsd_file.write("\n")
+            rmsd_file.close()
+            print(f"Created RMSD file for {element}", flush=True)
+    
     comm.Barrier()
 
-    pure_Nb_total_energy = comm.bcast(pure_Nb_total_energy, root=0)
-    pure_Ta_total_energy = comm.bcast(pure_Ta_total_energy, root=0)
-    pure_V_total_energy = comm.bcast(pure_V_total_energy, root=0)
-
-    total_energies_pure_elements[41] = pure_Nb_total_energy
-    total_energies_pure_elements[73] = pure_Ta_total_energy
-    total_energies_pure_elements[23] = pure_V_total_energy
+    # Broadcast pure element data to all ranks
+    pure_elements = comm.bcast(pure_elements, root=0)
 
     dirs = None
 
     if rank == 0:
-        dirs = [f.name for f in os.scandir(source_path) if f.is_dir()]
-
-    # Remove directories of pure elements from dirs
-    dirs.remove('Nb')
-    dirs.remove('Ta')
-    dirs.remove('V')
+        # First, find all subdirectories at source_path level
+        first_level_dirs = [f.name for f in os.scandir(source_path) if f.is_dir()]
+        
+        # For each first-level directory, get the actual data directories (second level)
+        dirs = []
+        for first_dir in first_level_dirs:
+            second_level_dirs = [f.name for f in os.scandir(source_path + '/' + first_dir) if f.is_dir()]
+            # Store as tuples of (first_level, second_level) to preserve the path
+            for second_dir in second_level_dirs:
+                dirs.append((first_dir, second_dir))
+        
+        # Remove pure element directories (matching Element128 pattern)
+        pure_element_dir_names = [e['dir_name'] for e in pure_elements]
+        dirs = [(f, s) for (f, s) in dirs if s not in pure_element_dir_names]
 
     dirs = comm.bcast(dirs, root=0)
 
     rx = list(nsplit(range(len(dirs)), size))[rank]
 
-    for dir in sorted(dirs)[rx.start:rx.stop]:
-        print("f Rank: ", rank, " - dir: ", dir, flush=True)
-        #os.makedirs(destination_path + '/' + dir, exist_ok=False)
-        for _, subdirs, _ in os.walk(source_path + '/' + dir):
-            for subdir in subdirs:
-                #os.makedirs(destination_path + '/' + dir + '/'+subdir, exist_ok=False)
-                for _, subsubdirs, _ in os.walk(source_path + '/' + dir + '/' + subdir):
-                    for subsubdir in subsubdirs:
-                        #os.makedirs(destination_path + '/' + dir + '/' + subdir + '/' + subsubdir, exist_ok=False)
-                        for _, _, files in os.walk(source_path + '/' + dir + '/' + subdir + '/' + subsubdir):
-                            found_outcar = False
-                            for file in files:
-                                if file == "OUTCAR" or file == "OUTCAR-bis":
-                                    found_outcar = True
-                                    try:
-                                        data_object = transform_ASE_object_to_data_object(source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + file)
-                                        #shutil.copy(source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + file, destination_path+ '/' + dir + '/' + subdir + '/' + subsubdir)
-                                        if "-bis" in file:
-                                            initial_ideal_bcc = extract_coordinates(source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + '0.POSCAR-bis')
-                                            final_bcc = extract_coordinates(
-                                                source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + 'CONTCAR-bis')
-                                            #formation_energy_file = open(destination_path+ '/' + dir + '/' + subdir + '/' + subsubdir + '/' + "formation_energy-bis.txt", "w")
-                                            root_mean_squared_displacement_file = open(
-                                                source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + "root_mean_squared_displacement-bis.txt",
-                                                "w")
-                                        else:
-                                            #formation_energy_file = open(destination_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + "formation_energy.txt","w")
-                                            initial_ideal_bcc = extract_coordinates(
-                                                source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + '0.POSCAR')
-                                            final_bcc = extract_coordinates(
-                                                source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + 'CONTCAR')
-                                            root_mean_squared_displacement_file = open(
-                                                source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + "root_mean_squared_displacement.txt",
-                                                "w")
-                                        #distorted_ideal_bcc_lattice = torch.matmul(data_object.supercell_size, initial_ideal_bcc.t())
-                                        #atomic_displacements = torch.norm(distorted_ideal_bcc_lattice.t()-data_object.pos, dim=1)
-                                        atomic_displacements = final_bcc - initial_ideal_bcc
-                                        atomic_displacements[atomic_displacements > 0.9] -= 1
-                                        atomic_displacements[atomic_displacements < -0.9] += 1
-                                        distorted_atomic_displacement = torch.matmul(data_object.supercell_size,
-                                                                                   atomic_displacements.t())
-                                        norm_distorted_atomic_displacement = torch.norm(distorted_atomic_displacement.t(), dim=1)**2
-                                        mean_squared_displacement = torch.sum(norm_distorted_atomic_displacement)/norm_distorted_atomic_displacement.shape[0]
-                                        root_mean_squared_displacement = torch.sqrt(mean_squared_displacement)
-                                        root_mean_squared_displacement_file.write(str(root_mean_squared_displacement.item()))
-                                        root_mean_squared_displacement_file.write("\n")
-                                        root_mean_squared_displacement_file.close()
-                                    except:
-                                        print(source_path + '/' + dir + '/' + subdir + '/' + subsubdir + '/' + file, "could not be converted in torch_geometric.data "
-                                                                            "object")
-                            # If the atomic configuration has not been completed and the OUTCAR is not available, simply remove the corresponding directory from the data replica
-                            #if not found_outcar:
-                            #    shutil.rmtree(destination_path+ '/' + dir + '/' + subdir + '/' + subsubdir)
+    for first_dir, dir in sorted(dirs)[rx.start:rx.stop]:
+        print(f"Rank: {rank} - Processing dir: {first_dir}/{dir}", flush=True)
+        for _, subdirs, _ in os.walk(source_path + '/' + first_dir + '/' + dir):
+            total_cases = len(subdirs)
+            print(f"Rank: {rank} - Found {total_cases} cases in {dir}", flush=True)
+            
+            for idx, subdir in enumerate(subdirs, 1):
+                # Find the final OUTCAR file with largest B in NB.OUTCAR
+                final_outcar = find_final_outcar(source_path + '/' + first_dir + '/' + dir + '/' + subdir)
+                
+                if final_outcar:
+                    try:
+                        print(f"Rank: {rank} - Processing {dir}/{subdir} ({idx}/{total_cases}) - Reading {final_outcar}", flush=True)
+                        data_object = transform_ASE_object_to_data_object(source_path + '/' + first_dir + '/' + dir + '/' + subdir + '/' + final_outcar)
+                        
+                        # Create destination directory if it doesn't exist
+                        dest_dir = destination_path + '/' + dir + '/' + subdir
+                        os.makedirs(dest_dir, exist_ok=True)
+                        
+                        # Find the corresponding CONTCAR file
+                        final_contcar = find_final_contcar(source_path + '/' + first_dir + '/' + dir + '/' + subdir)
+                        if not final_contcar:
+                            raise FileNotFoundError(f"No CONTCAR file found in {source_path}/{first_dir}/{dir}/{subdir}")
+                        
+                        if "-bis" in final_outcar:
+                            initial_ideal_bcc = extract_coordinates(source_path + '/' + first_dir + '/' + dir + '/' + subdir + '/' + '0.POSCAR-bis')
+                            final_bcc = extract_coordinates(source_path + '/' + first_dir + '/' + dir + '/' + subdir + '/' + final_contcar)
+                            root_mean_squared_displacement_file = open(
+                                dest_dir + '/' + "root_mean_squared_displacement-bis.txt", "w")
+                        else:
+                            initial_ideal_bcc = extract_coordinates(source_path + '/' + first_dir + '/' + dir + '/' + subdir + '/' + '0.POSCAR')
+                            final_bcc = extract_coordinates(source_path + '/' + first_dir + '/' + dir + '/' + subdir + '/' + final_contcar)
+                            root_mean_squared_displacement_file = open(
+                                dest_dir + '/' + "root_mean_squared_displacement.txt", "w")
+                        
+                        atomic_displacements = final_bcc - initial_ideal_bcc
+                        atomic_displacements[atomic_displacements > 0.9] -= 1
+                        atomic_displacements[atomic_displacements < -0.9] += 1
+                        distorted_atomic_displacement = torch.matmul(data_object.supercell_size, atomic_displacements.t())
+                        norm_distorted_atomic_displacement = torch.norm(distorted_atomic_displacement.t(), dim=1)**2
+                        mean_squared_displacement = torch.sum(norm_distorted_atomic_displacement)/norm_distorted_atomic_displacement.shape[0]
+                        root_mean_squared_displacement = torch.sqrt(mean_squared_displacement)
+                        root_mean_squared_displacement_file.write(str(root_mean_squared_displacement.item()))
+                        root_mean_squared_displacement_file.write("\n")
+                        root_mean_squared_displacement_file.close()
+                        print(f"Rank: {rank} - Completed {dir}/{subdir} ({idx}/{total_cases})", flush=True)
+                    except Exception as e:
+                        print(f"Rank: {rank} - ERROR: {source_path}/{first_dir}/{dir}/{subdir}/{final_outcar} could not be processed: {e}", flush=True)
+                else:
+                    print(f"Rank: {rank} - WARNING: No OUTCAR found in {dir}/{subdir}", flush=True)
 
             break
 
 
 if __name__ == '__main__':
-    source_path = '10.13139_OLCF_2222910/bcc_Ta-V'
-    destination_path = './bcc_enthalpy'
+    source_path = '../bcc_Nb-Zr'
+    destination_path = './bcc_enthalpy_NbZr'
     compute_mean_squared_displacement(source_path, destination_path)
 

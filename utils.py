@@ -93,7 +93,8 @@ def extract_positions_forces_energy(section):
     # Convert lists to PyTorch tensors
     positions_tensor = torch.tensor(positions_list)
     forces_tensor = torch.tensor(forces_list)
-    energy_tensor = torch.tensor([energy])/positions_tensor.shape[0]
+    # Store TOTAL energy, not per-atom energy
+    energy_tensor = torch.tensor([energy])
 
     return positions_tensor, forces_tensor, energy_tensor
 
@@ -149,6 +150,9 @@ def read_outcar(file_path, extract_only_optimized_geometries = True):
     # Read sections between specified markers
     result_atomic_structure_sections = read_sections_between(file_path, atomic_structure_start_marker, atomic_structure_end_marker)
 
+    # Initialize atom_numbers before the loop
+    atom_numbers = None
+    
     # Extract POSITION and TOTAL-FORCE from each section
     for i, (supercell_section, atomic_structure_section) in enumerate(zip(result_supercell, result_atomic_structure_sections), start=1):
 
@@ -173,19 +177,43 @@ def read_outcar(file_path, extract_only_optimized_geometries = True):
 
     if extract_only_optimized_geometries:
         dataset = dataset[-1:]
+    
+    # Ensure atom_numbers is set
+    if atom_numbers is None:
+        raise ValueError(f"No atomic structure found in {file_path}")
 
     return dataset, atom_numbers.flatten().tolist()
 
 
 def replace_total_energy_with_formation_energy(data_object, total_energies_pure_elements):
-
-    count_occurrencies_atom_elements = torch.bincount(data_object.x[:,0].int(), minlength=max(list(total_energies_pure_elements.keys()))+1)
-    assert torch.sum(count_occurrencies_atom_elements) == data_object.num_nodes , "number of atoms in data structure does not correspond to sum of total occurrencies of individual atom species"
-
-    count_occurrencies_atom_elements = count_occurrencies_atom_elements / data_object.num_nodes
-
-    for element in total_energies_pure_elements.keys():
-        data_object.y = data_object.y - total_energies_pure_elements[element] * count_occurrencies_atom_elements[element].item()
+    """
+    Calculate formation energy using the lever rule.
+    
+    Formation energy = E_mixture - sum(x_i * E_pure_i)
+    where x_i is the mole fraction of element i
+    
+    All energies are total energies (not per-atom).
+    """
+    
+    # Count atoms of each element
+    count_occurrencies_atom_elements = torch.bincount(
+        data_object.x[:,0].int(), 
+        minlength=max(list(total_energies_pure_elements.keys()))+1
+    )
+    
+    assert torch.sum(count_occurrencies_atom_elements) == data_object.num_nodes, \
+        "number of atoms in data structure does not correspond to sum of total occurrencies of individual atom species"
+    
+    # Calculate formation energy
+    formation_energy = data_object.y.clone()  # Start with mixture total energy
+    
+    for element_atomic_num in total_energies_pure_elements.keys():
+        # Number of atoms of this element
+        num_atoms = count_occurrencies_atom_elements[element_atomic_num].item()
+        # Subtract: (number of atoms) * (energy per atom of pure element)
+        formation_energy = formation_energy - num_atoms * total_energies_pure_elements[element_atomic_num]
+    
+    data_object.y = formation_energy
 
     return data_object
 

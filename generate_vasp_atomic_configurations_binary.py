@@ -107,8 +107,8 @@ def generate_VASP_randomized_binary_configurations(source_path, destination_path
 
 if __name__ == '__main__':
     current_directory = os.getcwd()
-    source_path = current_directory + '/template_Ta-V'
-    destination_path = current_directory + '/hcp/Ta-V'
+    source_path = current_directory + '/template_Nb-Zr'
+    destination_path = current_directory + '/bcc/Nb-Zr'
     atomic_increment = 4
     num_atomic_configurations_per_composition = 100
     symmetry_savings = False

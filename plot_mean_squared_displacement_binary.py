@@ -34,7 +34,7 @@ rank = comm.Get_rank()
 
 plt.rcParams.update({"font.size": 20})
 
-pure_elements_dictionary = {'V': 23, 'Nb': 41, 'Ta': 73}
+pure_elements_dictionary = {'V': 23, 'Nb': 41, 'Ta': 73, 'Ti': 22, 'Zr': 40, 'Hf': 72}
 
 def getcolordensity(xdata, ydata):
     ###############################
@@ -164,7 +164,7 @@ def load_raw_data(raw_data_path):
     rx = list(nsplit(range(len(dirs)), size))[rank]
 
     for name in sorted(dirs)[rx.start:rx.stop]:
-        print("f Rank: ", rank, " - name: ", name, flush=True)
+        print(f"Rank: {rank} - Processing directory: {name}", flush=True)
         if name == ".DS_Store":
             continue
         # if the directory contains subdirectories, explore their content
@@ -172,21 +172,26 @@ def load_raw_data(raw_data_path):
             if name == ".DS_Store":
                 continue
             dir_name = os.path.join(raw_data_path, name)
-            for subname in os.listdir(dir_name):
-                if subname == ".DS_Store":
-                    continue
+            subdirs = [s for s in os.listdir(dir_name) if s != ".DS_Store" and os.path.isdir(os.path.join(dir_name, s))]
+            total_cases = len(subdirs)
+            print(f"Rank: {rank} - Found {total_cases} cases in {name}", flush=True)
+            
+            for idx, subname in enumerate(subdirs, 1):
                 subdir_name = os.path.join(dir_name, subname)
-                for subsubname in os.listdir(subdir_name):
-                    if subsubname == ".DS_Store":
-                        continue
-                    subsubdir_name = os.path.join(subdir_name, subsubname)
-                    for subsubsubname in os.listdir(subsubdir_name):
-                        if os.path.isfile(os.path.join(subsubdir_name, subsubsubname)):
-                            data_object = transform_input_to_data_object_base(
-                                filepath=os.path.join(subsubdir_name, subsubsubname)
-                            )
-                            if not isinstance(data_object, type(None)):
-                                dataset.append(data_object)
+                    
+                # Look for OUTCAR file in this case directory
+                outcar_files = [f for f in os.listdir(subdir_name) if 'OUTCAR' in f and '0.OUTCAR' not in f]
+                if outcar_files:
+                    # Use the first OUTCAR found
+                    outcar_file = outcar_files[0]
+                    print(f"Rank: {rank} - Processing {name}/{subname} ({idx}/{total_cases}) - Reading {outcar_file}", flush=True)
+                    filepath = os.path.join(subdir_name, outcar_file)
+                    data_object = transform_input_to_data_object_base(filepath=filepath)
+                    if not isinstance(data_object, type(None)):
+                        dataset.append(data_object)
+                        print(f"Rank: {rank} - Completed {name}/{subname} ({idx}/{total_cases})", flush=True)
+                    else:
+                        print(f"Rank: {rank} - Skipped {name}/{subname} ({idx}/{total_cases}) - No valid data", flush=True)
 
     return dataset
 
@@ -254,7 +259,11 @@ def transform_VASP_ASE_object_to_data_object(filepath, ase_object):
     )
     data_object.x = tensor(node_feature_matrix).float()
 
-    mean_squared_displacement_file = open(filepath + 'root_mean_squared_displacement.txt', 'r')
+    # Extract directory path from OUTCAR filepath
+    dirpath = os.path.dirname(filepath)
+    rmsd_file_path = os.path.join(dirpath, 'root_mean_squared_displacement.txt')
+    
+    mean_squared_displacement_file = open(rmsd_file_path, 'r')
     Lines = mean_squared_displacement_file.readlines()
 
     # Strips the newline character
@@ -265,7 +274,6 @@ def transform_VASP_ASE_object_to_data_object(filepath, ase_object):
 
 
 if __name__ == '__main__':
-    elements_list = ['Ta', 'V']
-    #source_path = './bcc_enthalpy/'+elements_list[0]+'-'+elements_list[1]
-    source_path = './10.13139_OLCF_2222910/bcc_' + '-'.join(elements_list)
+    elements_list = ['Nb', 'Zr']
+    source_path = './bcc_enthalpy_' + elements_list[0] + elements_list[1]
     plot_data(source_path, elements_list)
