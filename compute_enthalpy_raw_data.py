@@ -72,18 +72,26 @@ def compute_formation_enthalpy(source_path, destination_path):
         pure_elements = []
         for first_dir in first_level_dirs:
             second_level_dirs = [f.name for f in os.scandir(source_path + '/' + first_dir) if f.is_dir()]
-            # Look for directories matching pattern like Nb128, Zr128, etc. (element + 128)
+            # Look for directories matching pattern like Nb128, Zr128, V128, etc. (element + 128)
+            # Also check for just element names (V, Nb, Zr, etc.) in case structure differs
             for dir_name in second_level_dirs:
+                element = None
                 # Check if directory name ends with 128 and starts with a known element
                 if dir_name.endswith('128'):
-                    element = dir_name[:-3]  # Remove '128'
-                    if element in element_atomic_numbers:
-                        pure_elements.append({
-                            'element': element,
-                            'dir_name': dir_name,
-                            'first_level': first_dir,
-                            'atomic_number': element_atomic_numbers[element]
-                        })
+                    potential_element = dir_name[:-3]  # Remove '128'
+                    if potential_element in element_atomic_numbers:
+                        element = potential_element
+                # Also check if directory name is exactly an element name
+                elif dir_name in element_atomic_numbers:
+                    element = dir_name
+                
+                if element:
+                    pure_elements.append({
+                        'element': element,
+                        'dir_name': dir_name,
+                        'first_level': first_dir,
+                        'atomic_number': element_atomic_numbers[element]
+                    })
         
         print(f"Found pure elements: {[e['element'] for e in pure_elements]}", flush=True)
         
