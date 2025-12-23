@@ -90,8 +90,8 @@ def generate_VASP_randomized_ternary_configurations(source_path, destination_pat
 
 if __name__ == '__main__':
     current_directory = os.getcwd()
-    source_path = current_directory + '/template_Nb-Ta-Zr'
-    destination_path = current_directory + '/bcc/Nb-Ta-Zr'
+    source_path = current_directory + '/template_BCC_Ti-V-Cr'
+    destination_path = current_directory + '/bcc/Ti-V-Cr'
     atomic_increment = 8
     num_atomic_configurations_per_composition = 100
     symmetry_savings = False
