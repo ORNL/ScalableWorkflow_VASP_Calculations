@@ -1,0 +1,6 @@
+dataset,elem1,elem2,n_total,n_kept,n_flagged,flagged_fraction
+bcc_HfNb,Nb,Hf,3027,2783,244,0.080608
+bcc_HfTa,Hf,Ta,3038,2699,339,0.111587
+bcc_HfTi,Ti,Hf,3100,3099,1,0.000323
+bcc_NbTi,Ti,Nb,3072,2776,296,0.096354
+bcc_TaTi,Ti,Ta,3099,2726,373,0.120361

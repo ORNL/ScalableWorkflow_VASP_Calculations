@@ -1,0 +1,21 @@
+SYSTEM = bcc_TaZr_Zr128
+ISTART = 0
+ICHARG = 2
+ENCUT = 350.0
+PREC = Normal
+
+ISMEAR = 1
+SIGMA = 0.20
+
+EDIFF = 1E-06
+NELM = 120
+ALGO = Fast
+
+IBRION = 2
+NSW = 100
+ISIF = 3
+
+ISYM = 2
+LREAL = Auto
+LWAVE = .FALSE.
+LCHARG = .FALSE.
