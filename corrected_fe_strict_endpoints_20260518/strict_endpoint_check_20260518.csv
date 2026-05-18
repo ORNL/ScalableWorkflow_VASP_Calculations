@@ -1,0 +1,4 @@
+dataset,elem1,elem2,pure_x0_outcar,pure_x1_outcar,ref_elem1_eVatom,ref_elem2_eVatom,FE_x0_meVatom,FE_x1_meVatom
+bcc_NbZr,Nb,Zr,/lustre/orion/lrn070/world-shared/mlupopa/RHEAs_HydraGNN/HydraGNN/examples/vasp_solid_solution_alloys/dataset/bcc_NbZr/Nb/Nb128/case-1/N0.OUTCAR,corrected_DFT_pure_element_runs/bcc_NbZr_Zr128/N0.OUTCAR,-10.20795293,-8.40191185,4.296873967746251e-06,-8.593747935492502e-07
+bcc_TaZr,Ta,Zr,/lustre/orion/lrn070/world-shared/mlupopa/RHEAs_HydraGNN/HydraGNN/examples/vasp_solid_solution_alloys/dataset/bcc_TaZr/Ta/Ta128/case-1/N0.OUTCAR,corrected_DFT_pure_element_runs/bcc_TaZr_Zr128/N0.OUTCAR,-11.85473858,-8.40191185,-2.8437501242706276e-05,-8.593747935492502e-07
+bcc_VZr,V,Zr,corrected_DFT_pure_element_runs/bcc_VZr_V128/N0.OUTCAR,corrected_DFT_pure_element_runs/bcc_VZr_Zr128/N0.OUTCAR,-8.98971447,-8.40191185,4.765624339597707e-06,-8.593747935492502e-07

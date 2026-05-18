@@ -150,9 +150,8 @@ def plot_data(source_path, elements_list):
         xdata = [elem[0] for elem in tuples]
         formation_enthalpy = [elem[1] for elem in tuples]
 
-        # Convert formation enthalpy from eV/atom to meV/atom
-        # Note: formation_enthalpy is already per-atom from the formation_energy.txt files
-        formation_enthalpy_rescaled = [item * 1000 for item in formation_enthalpy]
+        # formation_energy.txt stores formation energy in meV/atom.
+        formation_enthalpy_rescaled = formation_enthalpy
 
         q25_formation_enthalpy, q75_formation_enthalpy = np.percentile(formation_enthalpy_rescaled, [25, 75])
         bin_width_formation_enthalpy = 2 * (q75_formation_enthalpy - q25_formation_enthalpy) * len(

@@ -1,0 +1,35 @@
+Pure reference cross-check across available bcc systems
+
+Hf: n=3 min=-9.95345256 max=-9.95345017 span=0.002 meV/atom
+  bcc_HfNb: -9.95345256 eV/atom
+  bcc_HfTa: -9.95345242 eV/atom
+  bcc_HfTi: -9.95345017 eV/atom
+
+Nb: n=5 min=-10.20795293 max=-10.19915578 span=8.797 meV/atom
+  bcc_NbZr: -10.20795293 eV/atom
+  bcc_NbTa: -10.20795260 eV/atom
+  bcc_NbV: -10.20795260 eV/atom
+  bcc_HfNb: -10.20132371 eV/atom
+  bcc_NbTi: -10.19915578 eV/atom
+
+Ta: n=5 min=-11.85473861 max=-11.64702151 span=207.717 meV/atom
+  bcc_TaZr: -11.85473861 eV/atom
+  bcc_NbTa: -11.85473858 eV/atom
+  bcc_TaV: -11.85473858 eV/atom
+  bcc_TaTi: -11.64804243 eV/atom
+  bcc_HfTa: -11.64702151 eV/atom
+
+Ti: n=3 min=-7.88942211 max=-7.88942091 span=0.001 meV/atom
+  bcc_TaTi: -7.88942211 eV/atom
+  bcc_HfTi: -7.88942159 eV/atom
+  bcc_NbTi: -7.88942091 eV/atom
+
+V: n=3 min=-9.14367670 max=-9.11930656 span=24.370 meV/atom
+  bcc_VZr: -9.14367670 eV/atom
+  bcc_NbV: -9.11930656 eV/atom
+  bcc_TaV: -9.11930656 eV/atom
+
+Zr: n=3 min=-11.85473861 max=-9.11930658 span=2735.432 meV/atom
+  bcc_NbZr: -11.85473861 eV/atom
+  bcc_TaZr: -11.85473861 eV/atom
+  bcc_VZr: -9.11930658 eV/atom

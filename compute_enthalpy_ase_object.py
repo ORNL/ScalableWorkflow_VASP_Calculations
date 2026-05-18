@@ -3,6 +3,7 @@ from os import listdir
 from os.path import isfile, join
 import subprocess
 import re
+import csv
 
 import torch
 from torch import tensor
@@ -80,15 +81,41 @@ def transform_ASE_object_to_data_object(filepath):
     cmd = 'grep -n '+'"energy(sigma->0) =" '+ filepath + ' | tail -1 | rev | cut -d '+'" "'+' -f1 | rev'
     energy = float(subprocess.getoutput(cmd))
 
-    # Convert energy from eV to meV
-    # Normalize energy by the number of atoms in the structure
-    data_object.y = tensor(energy) * 1000/data_object.num_nodes
+    # Keep total energy in eV. The lever-rule utility subtracts
+    # per-atom references multiplied by atom counts.
+    data_object.y = tensor(energy)
 
     return data_object
 
 
+def load_reference_overrides_csv(csv_path):
+    """Load element reference energies from CSV.
 
-def compute_formation_enthalpy(source_path, destination_path):
+    Expected format:
+      element,eV_per_atom
+    Header row is optional. Lines starting with '#' are ignored.
+    """
+    overrides = {}
+    with open(csv_path, "r", newline="") as f:
+        reader = csv.reader(f)
+        for row in reader:
+            if not row:
+                continue
+            if row[0].strip().startswith("#"):
+                continue
+            if len(row) < 2:
+                continue
+            element = row[0].strip()
+            value_str = row[1].strip()
+            # Skip optional header
+            if element.lower() == "element" and value_str.lower() in {"ev_per_atom", "energy_ev_per_atom"}:
+                continue
+            overrides[element] = float(value_str)
+    return overrides
+
+
+
+def compute_formation_enthalpy(source_path, destination_path, reference_overrides=None):
     
     # Element atomic numbers mapping (can be extended)
     element_atomic_numbers = {
@@ -97,6 +124,7 @@ def compute_formation_enthalpy(source_path, destination_path):
     
     total_energies_pure_elements = {}
     pure_element_data = {}
+    reference_overrides = reference_overrides or {}
 
     if rank == 0:
         # Create base directory
@@ -162,9 +190,25 @@ def compute_formation_enthalpy(source_path, destination_path):
                 'atomic_number': atomic_num,
                 'dir_name': dir_name
             }
-            total_energies_pure_elements[atomic_num] = pure_object.y.item()
+            measured_energy_per_atom = pure_object.y.item() / pure_object.num_nodes
+            chosen_energy_per_atom = reference_overrides.get(element, measured_energy_per_atom)
+            total_energies_pure_elements[atomic_num] = chosen_energy_per_atom
+
+            if element in reference_overrides:
+                print(
+                    f"Using override for {element}: {chosen_energy_per_atom} eV/atom "
+                    f"(measured {measured_energy_per_atom} eV/atom)",
+                    flush=True,
+                )
             
             print(f"Successfully processed {element} with energy {pure_object.y.item()}", flush=True)
+
+        unused_override_elements = sorted(set(reference_overrides.keys()) - set(pure_element_data.keys()))
+        if unused_override_elements:
+            print(
+                f"WARNING: Unused reference override elements: {unused_override_elements}",
+                flush=True,
+            )
     
     comm.Barrier()
 
@@ -213,8 +257,8 @@ def compute_formation_enthalpy(source_path, destination_path):
                         data_object = replace_total_energy_with_formation_energy(data_object, total_energies_pure_elements)
                         shutil.copy(source_path + '/' + first_dir + '/' + dir + '/' + subdir + '/' + final_outcar, destination_path+ '/' + dir + '/' + subdir)
                         
-                        # Convert to formation energy per atom
-                        formation_energy_per_atom = data_object.y.item() / data_object.num_nodes
+                        # Convert to formation energy per atom in meV/atom
+                        formation_energy_per_atom = (data_object.y.item() / data_object.num_nodes) * 1000.0
                         
                         if "-bis" in final_outcar:
                             formation_energy_file = open(destination_path+ '/' + dir + '/' + subdir + '/' + "formation_energy-bis.txt", "w")

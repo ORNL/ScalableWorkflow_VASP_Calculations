@@ -130,14 +130,14 @@ def compute_formation_enthalpy(source_path, destination_path):
             # Store energy per atom for pure elements (for lever rule)
             pure_element_data[element] = {
                 'energy': pure_object.y.item(),  # total energy
-                'energy_per_atom': pure_object.y.item() / 128.0,  # energy per atom
+                'energy_per_atom': pure_object.y.item() / pure_object.num_nodes,  # energy per atom
                 'atomic_number': atomic_num,
                 'dir_name': dir_name
             }
             # Store energy per atom for use in formation energy calculation
-            total_energies_pure_elements[atomic_num] = pure_object.y.item() / 128.0
+            total_energies_pure_elements[atomic_num] = pure_object.y.item() / pure_object.num_nodes
             
-            print(f"Successfully processed {element}: Total energy = {pure_object.y.item():.6f} eV, Per atom = {pure_object.y.item()/128.0:.6f} eV/atom", flush=True)
+            print(f"Successfully processed {element}: Total energy = {pure_object.y.item():.6f} eV, Per atom = {pure_object.y.item()/pure_object.num_nodes:.6f} eV/atom", flush=True)
     
     comm.Barrier()
 
@@ -189,8 +189,8 @@ def compute_formation_enthalpy(source_path, destination_path):
                         data_object = replace_total_energy_with_formation_energy(data_object, total_energies_pure_elements)
                         shutil.copy(source_path + '/' + first_dir + '/' + dir + '/' + subdir + '/' + final_outcar, destination_path+ '/' + dir + '/' + subdir)
                         
-                        # Convert to formation energy per atom
-                        formation_energy_per_atom = data_object.y.item() / data_object.num_nodes
+                        # Convert to formation energy per atom in meV/atom
+                        formation_energy_per_atom = (data_object.y.item() / data_object.num_nodes) * 1000.0
                         
                         if "-bis" in final_outcar:
                             formation_energy_file = open(destination_path+ '/' + dir + '/' + subdir + '/' + "formation_energy-bis.txt", "w")
